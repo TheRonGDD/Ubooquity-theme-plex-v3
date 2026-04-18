@@ -32,9 +32,9 @@
             <div class="details-actions">
                 <a id="details_download_" class="details_button details_button_secondary details_button_icon details_button_download" href="{{downloadUrl}}" title="Download" aria-label="Download"></a>
                 {{#readerUrl}}
-                <a id="details_read_" class="details_button details_button_icon details_button_read" href="{{readerUrl}}" title="Read" aria-label="Read" onclick="togglePopup('bookdetails');openBook('{{readerUrl}}');return false;"></a>
-                <a id="details_mark_unread_" class="details_button details_button_secondary details_button_icon details_button_unread" href="#" title="Mark unread" aria-label="Mark unread" onclick="markAsUnread('{{ItemId}}','{{rootPath}}');return false;"></a>
-                <a id="details_mark_finished_" class="details_button details_button_secondary details_button_icon details_button_finished" href="#" title="Mark finished" aria-label="Mark finished" onclick="markAsFinished('{{ItemId}}','{{rootPath}}');return false;"></a>
+                <a id="details_read_" class="details_button details_button_icon details_button_read" href="{{readerUrl}}" title="Read" aria-label="Read" onclick="togglePopup('bookdetails');plexV3TrackContinueReading('{{ItemId}}','{{readerUrl}}','{{title}}','{{coverUrl}}','{{rootPath}}');openBook('{{readerUrl}}');return false;"></a>
+                <a id="details_mark_unread_" class="details_button details_button_secondary details_button_icon details_button_unread" href="#" title="Mark unread" aria-label="Mark unread" onclick="plexV3RemoveTrackedContinueReading('{{ItemId}}');markAsUnread('{{ItemId}}','{{rootPath}}');return false;"></a>
+                <a id="details_mark_finished_" class="details_button details_button_secondary details_button_icon details_button_finished" href="#" title="Mark finished" aria-label="Mark finished" onclick="plexV3RemoveTrackedContinueReading('{{ItemId}}');markAsFinished('{{ItemId}}','{{rootPath}}');return false;"></a>
                 {{/readerUrl}}
             </div>
             <div id="details_description">{{description}}</div>

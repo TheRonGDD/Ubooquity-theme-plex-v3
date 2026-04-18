@@ -10,6 +10,8 @@ function plexV3ToggleSidebar() {
     return false;
 }
 
+var plexV3ContinueRefreshPending = false;
+
 function plexV3NormalizeCard(card) {
     var clone = card.cloneNode(true);
     clone.classList.add('home-row-card');
@@ -63,8 +65,93 @@ function plexV3ExtractItemId(card) {
 }
 
 function plexV3GetContinueCacheKey() {
-    var userName = document.body.getAttribute('data-user-name') || 'public_usr';
+    var userName =
+        document.body.getAttribute('data-user-name') ||
+        localStorage.getItem('plex-v3-current-user') ||
+        'public_usr';
     return 'plex-v3-continue-reading:v2:' + userName;
+}
+
+function plexV3GetTrackedContinueKey() {
+    var userName =
+        document.body.getAttribute('data-user-name') ||
+        localStorage.getItem('plex-v3-current-user') ||
+        'public_usr';
+    return 'plex-v3-continue-tracked:v1:' + userName;
+}
+
+function plexV3LoadTrackedContinueReading() {
+    try {
+        var raw = localStorage.getItem(plexV3GetTrackedContinueKey());
+        if (!raw) {
+            return {};
+        }
+
+        var parsed = JSON.parse(raw);
+        return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (e) {
+        return {};
+    }
+}
+
+function plexV3SaveTrackedContinueReading(items) {
+    try {
+        localStorage.setItem(plexV3GetTrackedContinueKey(), JSON.stringify(items || {}));
+    } catch (e) {
+    }
+}
+
+function plexV3BuildTrackedCardHtml(item) {
+    var rootPath = document.body.getAttribute('data-root-path') || '';
+    var article = document.createElement('article');
+    article.className = 'cellcontainer home-row-card';
+    article.innerHTML =
+        '<div class="cell poster-cell">' +
+            '<a class="thumb" href="#" onclick="togglePopup(\'bookdetails\');loadBookDetails(' + item.itemId + ',\'' + rootPath + '\');return false;">' +
+                '<img src="' + item.coverUrl + '" alt="">' +
+                '<div class="reading-mask in_progress">' +
+                    '<span class="cover_progress_bar_fill" style="--value: 50%;"></span>' +
+                '</div>' +
+            '</a>' +
+            '<div class="label"></div>' +
+        '</div>';
+
+    var image = article.querySelector('img');
+    var label = article.querySelector('.label');
+    if (image) {
+        image.alt = item.title || '';
+    }
+    if (label) {
+        label.textContent = item.title || '';
+    }
+
+    return article.outerHTML;
+}
+
+function plexV3TrackContinueReading(itemId, readerUrl, title, coverUrl) {
+    if (!itemId) {
+        return;
+    }
+
+    var items = plexV3LoadTrackedContinueReading();
+    items[String(itemId)] = {
+        itemId: String(itemId),
+        readerUrl: readerUrl || '',
+        title: title || '',
+        coverUrl: coverUrl || '',
+        updatedAt: Date.now()
+    };
+    plexV3SaveTrackedContinueReading(items);
+}
+
+function plexV3RemoveTrackedContinueReading(itemId) {
+    if (!itemId) {
+        return;
+    }
+
+    var items = plexV3LoadTrackedContinueReading();
+    delete items[String(itemId)];
+    plexV3SaveTrackedContinueReading(items);
 }
 
 function plexV3RenderContinueReading(cards, fallbackText) {
@@ -167,7 +254,8 @@ function plexV3CollectContinueReadingFromPage(doc, pageUrl, itemsById, queue, vi
 function plexV3FetchBookmarkForCurrentUser(itemId) {
     var rootPath = document.body.getAttribute('data-root-path') || '';
     return fetch(rootPath + '/user-api/bookmark?docId=' + encodeURIComponent(itemId), {
-        credentials: 'same-origin'
+        credentials: 'same-origin',
+        cache: 'no-store'
     }).then(function (response) {
         if (response.status === 204) {
             return '';
@@ -204,6 +292,19 @@ function plexV3BuildContinueReading(seedUrls) {
     });
 
     function finalize() {
+        var trackedItems = plexV3LoadTrackedContinueReading();
+        Object.keys(trackedItems).forEach(function (itemId) {
+            if (itemsById[itemId]) {
+                return;
+            }
+
+            itemsById[itemId] = {
+                itemId: itemId,
+                progress: 999,
+                html: plexV3BuildTrackedCardHtml(trackedItems[itemId])
+            };
+        });
+
         var candidates = Object.keys(itemsById)
             .map(function (itemId) {
                 return itemsById[itemId];
@@ -238,6 +339,15 @@ function plexV3BuildContinueReading(seedUrls) {
                 })
                 .slice(0, 18);
 
+            Object.keys(trackedItems).forEach(function (itemId) {
+                if (!results.some(function (result) {
+                    return result.item.itemId === itemId && result.bookmark && result.bookmark !== '0' && result.bookmark !== '0#0';
+                })) {
+                    delete trackedItems[itemId];
+                }
+            });
+            plexV3SaveTrackedContinueReading(trackedItems);
+
             if (cards.length) {
                 plexV3SaveContinueReadingCache(cards);
                 plexV3RenderContinueReading(cards);
@@ -265,7 +375,7 @@ function plexV3BuildContinueReading(seedUrls) {
         visited[url] = true;
         pagesVisited += 1;
 
-        fetch(url, { credentials: 'same-origin' })
+        fetch(url, { credentials: 'same-origin', cache: 'no-store' })
             .then(function (response) {
                 return response.text();
             })
@@ -283,44 +393,66 @@ function plexV3BuildContinueReading(seedUrls) {
     next();
 }
 
+function plexV3RefreshHomeRows() {
+    if (!document.body.classList.contains('page-home')) {
+        return;
+    }
+
+    if (plexV3ContinueRefreshPending) {
+        return;
+    }
+
+    plexV3ContinueRefreshPending = true;
+    window.setTimeout(function () {
+        plexV3ContinueRefreshPending = false;
+        plexV3BuildHomeRows();
+    }, 50);
+}
+
+function plexV3LoadLatestRow(row) {
+    var url = row.getAttribute('data-source-url');
+    return fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+            .then(function (response) {
+                return response.text();
+            })
+            .then(function (html) {
+                var doc = new DOMParser().parseFromString(html, 'text/html');
+                var cards = Array.prototype.slice.call(doc.querySelectorAll('.poster-grid .cellcontainer')).slice(0, 12);
+                var strip = row.querySelector('.row-strip');
+                strip.classList.remove('row-strip-loading');
+                strip.textContent = '';
+
+                if (!cards.length) {
+                    strip.textContent = 'No items';
+                    return [];
+                }
+
+                cards.forEach(function (card) {
+                    strip.appendChild(plexV3NormalizeCard(card));
+                });
+                return cards;
+            })
+            .catch(function () {
+                var strip = row.querySelector('.row-strip');
+                strip.classList.remove('row-strip-loading');
+                strip.textContent = 'Unavailable';
+                return [];
+            });
+}
+
 function plexV3BuildHomeRows() {
     var latestRows = Array.prototype.slice.call(document.querySelectorAll('[data-dynamic-row="latest"]'));
     if (!latestRows.length) {
         return;
     }
 
-    Promise.all(
-        latestRows.map(function (row) {
-            var url = row.getAttribute('data-source-url');
-            return fetch(url, { credentials: 'same-origin' })
-                .then(function (response) {
-                    return response.text();
-                })
-                .then(function (html) {
-                    var doc = new DOMParser().parseFromString(html, 'text/html');
-                    var cards = Array.prototype.slice.call(doc.querySelectorAll('.poster-grid .cellcontainer')).slice(0, 12);
-                    var strip = row.querySelector('.row-strip');
-                    strip.classList.remove('row-strip-loading');
-                    strip.textContent = '';
+    var continueStrip = document.querySelector('[data-dynamic-row="continue-reading"] .row-strip');
+    if (continueStrip && !continueStrip.textContent.trim()) {
+        continueStrip.classList.add('row-strip-loading');
+        continueStrip.textContent = 'Loading...';
+    }
 
-                    if (!cards.length) {
-                        strip.textContent = 'No items';
-                        return [];
-                    }
-
-                    cards.forEach(function (card) {
-                        strip.appendChild(plexV3NormalizeCard(card));
-                    });
-                    return cards;
-                })
-                .catch(function () {
-                    var strip = row.querySelector('.row-strip');
-                    strip.classList.remove('row-strip-loading');
-                    strip.textContent = 'Unavailable';
-                    return [];
-                });
-        })
-    ).then(function () {
+    Promise.all(latestRows.map(plexV3LoadLatestRow)).then(function () {
         var seedUrls = [];
 
         Array.prototype.slice.call(document.querySelectorAll('.home-sidebar .sidebar-link[data-category-id]')).forEach(function (link) {
@@ -338,6 +470,16 @@ function plexV3BuildHomeRows() {
 
         plexV3BuildContinueReading(seedUrls);
     });
+}
+
+function plexV3OnPageShow() {
+    plexV3RefreshHomeRows();
+}
+
+function plexV3OnVisibilityChange() {
+    if (!document.hidden) {
+        plexV3RefreshHomeRows();
+    }
 }
 
 function plexV3LinkIsActive(href) {
@@ -364,6 +506,16 @@ function plexV3PopulateGlobalSidebar() {
         })
         .then(function (html) {
             var doc = new DOMParser().parseFromString(html, 'text/html');
+            var homeBody = doc.querySelector('body');
+            if (homeBody) {
+                var currentUser = homeBody.getAttribute('data-user-name');
+                if (currentUser) {
+                    try {
+                        localStorage.setItem('plex-v3-current-user', currentUser);
+                    } catch (e) {
+                    }
+                }
+            }
             var sourceLinks = Array.prototype.slice.call(doc.querySelectorAll('.home-sidebar .sidebar-nav .sidebar-link'));
             var logoutLink = doc.querySelector('.home-sidebar .sidebar-footer .sidebar-link');
 
@@ -440,5 +592,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (document.body.classList.contains('page-home')) {
         plexV3BuildHomeRows();
+        window.addEventListener('pageshow', plexV3OnPageShow);
+        document.addEventListener('visibilitychange', plexV3OnVisibilityChange);
     }
 });

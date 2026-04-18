@@ -1,0 +1,25 @@
+<div class="nav-cluster nav-left">
+    <button type="button" class="sidebar-toggle topbar-menu-button" data-sidebar-toggle aria-label="Toggle navigation">&#9776;</button>
+    <a href="{{rootPath}}/" class="brandblock brandblock-link">
+        <div class="brandmark">
+            <img src="{{rootPath}}/theme/common/favicon-32x32.png" alt="Ubooquity">
+        </div>
+        <div class="brandtext">
+            <div class="brandlabel">Application</div>
+            <div class="brandtitle">Ubooquity</div>
+        </div>
+    </a>
+</div>
+<div class="nav-cluster nav-center">
+    <a href="{{parentUrl}}" class="nav-button nav-button-icon nav-button-up" title="Up" aria-label="Up"></a>
+    <a href="#" class="nav-button nav-button-icon nav-button-settings" title="Sort and display settings" aria-label="Sort and display settings" onclick="togglePopup('settingsbox');return false;"></a>
+    <a href="#" class="nav-button nav-button-icon nav-button-search" title="Search" aria-label="Search" onclick="togglePopup('searchbox');document.forms.searchform.searchstring.focus();return false;"></a>
+    <a href="?random=true" class="nav-button nav-button-icon nav-button-random" title="Random" aria-label="Random"></a>
+    <a href="{{rootPath}}/?logout=true" class="nav-button">Logout</a>
+</div>
+<div class="nav-cluster nav-right">
+    <a href="{{prev10pageUrl}}" class="nav-button nav-button-icon nav-button-first {{prev10pageClass}}" title="First page" aria-label="First page"></a>
+    <a href="{{prevPageUrl}}" class="nav-button nav-button-icon nav-button-prev {{prevPageClass}}" title="Previous page" aria-label="Previous page"></a>
+    <a href="{{nextPageUrl}}" class="nav-button nav-button-icon nav-button-next {{nextPageClass}}" title="Next page" aria-label="Next page"></a>
+    <a href="{{next10pageUrl}}" class="nav-button nav-button-icon nav-button-last {{next10pageClass}}" title="Last page" aria-label="Last page"></a>
+</div>

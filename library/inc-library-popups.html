@@ -1,0 +1,37 @@
+<div id="dimoverlay"></div>
+<div class="popupmenu" id="pageselector">
+    <div class="popuptitle">Page</div>
+    <div class="popupbody">
+        {{pageSelectorLinks}}
+    </div>
+</div>
+<div class="popupmenu" id="searchbox">
+    <div class="popuptitle">Search</div>
+    <div class="popupbody">
+        <form id="searchform" method="POST" action="?search=simple">
+            <input class="textbox" type="text" name="searchstring" placeholder="Search title, file name, author">
+            <input class="actionbutton" type="submit" value="Search">
+        </form>
+    </div>
+</div>
+<div class="popupmenu details-popup" id="bookdetails"></div>
+<div class="popupmenu" id="settingsbox">
+    <div class="popuptitle">Display Settings</div>
+    <div class="popupbody">
+        <form id="settingsform" method="POST" action="{{rootPath}}/{{category}}?settings=true">
+            <div class="sectiontitle">Group by</div>
+            <label class="radiolabel"><input type="radio" name="grouping" value="FOLDER" {{checkedGroupByFolder}}>Folder</label>
+            <label class="radiolabel"><input type="radio" name="grouping" value="FLAT" {{checkedNoGrouping}}>Flat</label>
+            <div class="sectiontitle">Sort by</div>
+            <label class="radiolabel"><input type="radio" name="sortingCriterion" value="FILE_PATH" {{checkedSortByFilePath}}>File path</label>
+            <label class="radiolabel"><input type="radio" name="sortingCriterion" value="FILE_NAME" {{checkedSortByFileName}}>File name</label>
+            <label class="radiolabel"><input type="radio" name="sortingCriterion" value="WRITERS" {{checkedSortByWriters}}>Authors</label>
+            <label class="radiolabel"><input type="radio" name="sortingCriterion" value="TITLE" {{checkedSortByTitle}}>Title</label>
+            <label class="radiolabel"><input type="radio" name="sortingCriterion" value="DATE_UPDATED" {{checkedSortByDate}}>Date added</label>
+            <div class="sectiontitle">Order</div>
+            <label class="radiolabel"><input type="radio" name="sortingOrder" value="ASC" {{checkedSortAsc}}>A-Z</label>
+            <label class="radiolabel"><input type="radio" name="sortingOrder" value="DESC" {{checkedSortDesc}}>Z-A</label>
+            <input class="actionbutton" type="submit" value="Apply">
+        </form>
+    </div>
+</div>

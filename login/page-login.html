@@ -1,0 +1,23 @@
+{{>common/inc-header.html}}
+<body class="page-login">
+{{loginScripts}}
+    <main class="login-shell">
+        <section class="login-panel">
+            <div class="login-brand">
+                <div class="brandmark">U</div>
+                <div>
+                    <div class="brandlabel">Ubooquity</div>
+                    <div class="brandtitle">Sign in to your library</div>
+                </div>
+            </div>
+            <form id="{{formId}}" method="POST" action="{{rootPath}}/" class="login-form">
+                {{hiddenInputs}}
+                <label class="field-label" for="loginfield">Username</label>
+                <input type="text" id="loginfield" name="{{loginFieldName}}" value="" placeholder="Username">
+                <label class="field-label" for="{{passwordFieldId}}">Password</label>
+                <input type="password" id="{{passwordFieldId}}" value="" placeholder="Password">
+                <input type="submit" id="loginbutton" onclick="{{onLoginClick}}" value="Login">
+            </form>
+        </section>
+    </main>
+    {{>common/inc-footer.html}}

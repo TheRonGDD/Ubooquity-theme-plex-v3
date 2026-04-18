@@ -1,0 +1,46 @@
+{{>common/inc-header.html}}
+<body class="page-library" data-root-path="{{rootPath}}" data-page-label="{{category}}" data-page-category="{{category}}">
+    <div class="app-frame">
+        <header class="plex-topbar app-topbar">
+            <div class="plex-topbar-left">
+                <button type="button" class="sidebar-toggle topbar-menu-button" data-sidebar-toggle aria-label="Toggle navigation">&#9776;</button>
+                <a href="{{rootPath}}/" class="brandblock brandblock-link">
+                    <div class="brandmark">
+                        <img src="{{rootPath}}/theme/common/favicon-32x32.png" alt="Ubooquity">
+                    </div>
+                    <div class="brandtext">
+                        <div class="brandlabel">Library</div>
+                        <div class="brandtitle">{{category}}</div>
+                    </div>
+                </a>
+            </div>
+            <div class="plex-topbar-center topbar-actions"></div>
+            <div class="plex-topbar-right topbar-actions topbar-utilities">
+                <a href="#" class="nav-button nav-button-icon nav-button-search" title="Search" aria-label="Search" onclick="togglePopup('searchbox');document.forms.searchform.searchstring.focus();return false;"></a>
+                <a href="{{rootPath}}/?logout=true" class="nav-button">Logout</a>
+            </div>
+        </header>
+
+        <div class="frame-body">
+            <aside class="home-sidebar" data-sidebar-dynamic>
+                <nav class="sidebar-nav">
+                    <a href="{{rootPath}}/" class="sidebar-link">
+                        <span class="sidebar-link-icon">&#8962;</span>
+                        <span class="sidebar-link-text">Home</span>
+                    </a>
+                </nav>
+            </aside>
+
+            <main class="frame-content shell">
+                <section class="rail">
+                    <div id="group" class="root-list">
+                        {{#rootFolders}}
+                        <a href="{{folderUrl}}" class="rootlink">{{folderName}}</a>
+                        {{/rootFolders}}
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+    {{>library/inc-library-popups.html}}
+    {{>common/inc-footer.html}}

@@ -1,0 +1,43 @@
+<div id="details">
+    <a id="details_close" href="#" title="Close" aria-label="Close" onclick="togglePopup('bookdetails');return false;"></a>
+    <div class="details-backdrop"></div>
+    <div class="details-content">
+        <div class="details-cover-column">
+            <div id="details_cover">
+                <img src="{{coverUrl}}" alt="{{title}}">
+            </div>
+            <div id="details_progress_wrapper" class="{{readingStatusClass}}">
+                <div class="details_progress_bar">
+                    <span class="details_progress_bar_fill" style="--value: {{progress}}%;"></span>
+                </div>
+            </div>
+        </div>
+        <div class="details-info-column">
+            <div class="details-eyebrow">{{fileExtension}} • {{fileSize}}</div>
+            <div id="details_title">{{title}}</div>
+            <div id="details_authors">{{writers}}</div>
+            {{#seriesName}}
+            <div class="details-meta">{{seriesName}} {{seriesIndex}}</div>
+            {{/seriesName}}
+            {{#publicationDate}}
+            <div class="details-meta">Published {{publicationDate}}</div>
+            {{/publicationDate}}
+            {{#language}}
+            <div class="details-meta">Language {{language}}</div>
+            {{/language}}
+            {{#tags}}
+            <div class="details-meta">Tags {{tags}}</div>
+            {{/tags}}
+            <div class="details_rating">{{rating}}</div>
+            <div class="details-actions">
+                <a id="details_download_" class="details_button details_button_secondary details_button_icon details_button_download" href="{{downloadUrl}}" title="Download" aria-label="Download"></a>
+                {{#readerUrl}}
+                <a id="details_read_" class="details_button details_button_icon details_button_read" href="{{readerUrl}}" title="Read" aria-label="Read" onclick="togglePopup('bookdetails');openBook('{{readerUrl}}');return false;"></a>
+                <a id="details_mark_unread_" class="details_button details_button_secondary details_button_icon details_button_unread" href="#" title="Mark unread" aria-label="Mark unread" onclick="markAsUnread('{{ItemId}}','{{rootPath}}');return false;"></a>
+                <a id="details_mark_finished_" class="details_button details_button_secondary details_button_icon details_button_finished" href="#" title="Mark finished" aria-label="Mark finished" onclick="markAsFinished('{{ItemId}}','{{rootPath}}');return false;"></a>
+                {{/readerUrl}}
+            </div>
+            <div id="details_description">{{description}}</div>
+        </div>
+    </div>
+</div>

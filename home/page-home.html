@@ -1,0 +1,95 @@
+{{>common/inc-header.html}}
+<body class="page-home" data-root-path="{{rootPath}}" data-user-name="{{userName}}">
+    <div class="app-frame">
+        <header class="plex-topbar app-topbar">
+            <div class="plex-topbar-left">
+                <button type="button" class="sidebar-toggle topbar-menu-button" data-sidebar-toggle aria-label="Toggle navigation">&#9776;</button>
+                <a href="{{rootPath}}/" class="brandblock brandblock-link">
+                    <div class="brandmark">
+                        <img src="{{rootPath}}/theme/common/favicon-32x32.png" alt="Ubooquity">
+                    </div>
+                    <div class="brandtext">
+                        <div class="brandtitle">Ubooquity</div>
+                    </div>
+                </a>
+            </div>
+            <div class="plex-topbar-right">
+                <button type="button" class="nav-button nav-button-icon nav-button-search" title="Search" aria-label="Search" onclick="togglePopup('searchbox');document.getElementById('home-search-string').focus();return false;"></button>
+                {{#userName}}
+                <a href="{{rootPath}}/?logout=true" class="nav-button">Logout</a>
+                {{/userName}}
+            </div>
+        </header>
+
+        <div class="frame-body">
+            <aside class="home-sidebar">
+                <nav class="sidebar-nav">
+                    <a href="{{rootPath}}/" class="sidebar-link active">
+                        <span class="sidebar-link-icon">&#8962;</span>
+                        <span class="sidebar-link-text">Home</span>
+                    </a>
+                    {{#categories}}
+                    <a href="{{categoryUrl}}" class="sidebar-link" data-category-id="{{categoryId}}">
+                        <span class="sidebar-link-icon sidebar-link-icon-image"></span>
+                        <span class="sidebar-link-text">{{categoryName}}</span>
+                    </a>
+                    {{/categories}}
+                    {{#displayRawFiles}}
+                    <a href="{{rawFilesUrl}}" class="sidebar-link">
+                        <span class="sidebar-link-icon sidebar-link-icon-image sidebar-link-icon-files"></span>
+                        <span class="sidebar-link-text">Raw Files</span>
+                    </a>
+                    {{/displayRawFiles}}
+                </nav>
+            </aside>
+
+            <main class="frame-content shell shell-home">
+                <section class="rail rail-home">
+                    <div class="rail-header">
+                        <div class="rail-title">Continue Reading</div>
+                    </div>
+                    <div class="dynamic-row" data-dynamic-row="continue-reading">
+                        <div class="row-strip row-strip-loading">Loading...</div>
+                    </div>
+                </section>
+
+                <section class="rail rail-home">
+                    <div class="rail-header">
+                        <div class="rail-title">Recently Added</div>
+                    </div>
+                    <div class="dynamic-rails">
+                        {{#categories}}
+                        <section class="rail rail-subrail dynamic-row" data-dynamic-row="latest" data-row-title="{{categoryName}}" data-source-url="{{categoryLatestUrl}}">
+                            <div class="subrail-title">Recently Added in {{categoryName}}</div>
+                            <div class="row-strip row-strip-loading">Loading...</div>
+                        </section>
+                        {{/categories}}
+                    </div>
+                </section>
+
+                {{#displayNoFileMessage}}
+                <div class="empty-panel">
+                    No file to display. Configure your library folders in the admin settings.
+                </div>
+                {{/displayNoFileMessage}}
+            </main>
+        </div>
+    </div>
+
+    <div id="dimoverlay"></div>
+    <div class="popupmenu" id="searchbox">
+        <div class="popuptitle">Search</div>
+        <div class="popupbody">
+            <form id="home-search-form" method="POST">
+                <select class="textbox" id="home-search-target" name="category">
+                    {{#categories}}
+                    <option value="{{categoryUrl}}">{{categoryName}}</option>
+                    {{/categories}}
+                </select>
+                <input class="textbox" id="home-search-string" type="text" name="searchstring" placeholder="Search title, file name, author">
+                <input class="actionbutton" type="submit" value="Search">
+            </form>
+        </div>
+    </div>
+    <div class="popupmenu details-popup" id="bookdetails"></div>
+{{>common/inc-footer.html}}

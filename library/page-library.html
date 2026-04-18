@@ -1,0 +1,76 @@
+{{>common/inc-header.html}}
+<body class="page-library" data-root-path="{{rootPath}}" data-page-label="{{pageLabel}}" data-page-category="{{category}}">
+    <div class="app-frame">
+        <header class="plex-topbar app-topbar">
+            <div class="plex-topbar-left">
+                <button type="button" class="sidebar-toggle topbar-menu-button" data-sidebar-toggle aria-label="Toggle navigation">&#9776;</button>
+                <a href="{{rootPath}}/" class="brandblock brandblock-link">
+                    <div class="brandmark">
+                        <img src="{{rootPath}}/theme/common/favicon-32x32.png" alt="Ubooquity">
+                    </div>
+                    <div class="brandtext">
+                        <div class="brandlabel">{{category}}</div>
+                        <div class="brandtitle">{{pageLabel}}</div>
+                    </div>
+                </a>
+            </div>
+            <div class="plex-topbar-center topbar-actions">
+                <a href="{{prev10pageUrl}}" class="nav-button nav-button-icon nav-button-first {{prev10pageClass}}" title="First page" aria-label="First page"></a>
+                <a href="{{prevPageUrl}}" class="nav-button nav-button-icon nav-button-prev {{prevPageClass}}" title="Previous page" aria-label="Previous page"></a>
+                <a href="{{parentUrl}}" class="nav-button nav-button-icon nav-button-up" title="Up" aria-label="Up"></a>
+                <a href="#" class="nav-button nav-button-icon nav-button-settings" title="Sort and display settings" aria-label="Sort and display settings" onclick="togglePopup('settingsbox');return false;"></a>
+                <a href="?random=true" class="nav-button nav-button-icon nav-button-random" title="Random" aria-label="Random"></a>
+                <a href="{{nextPageUrl}}" class="nav-button nav-button-icon nav-button-next {{nextPageClass}}" title="Next page" aria-label="Next page"></a>
+                <a href="{{next10pageUrl}}" class="nav-button nav-button-icon nav-button-last {{next10pageClass}}" title="Last page" aria-label="Last page"></a>
+            </div>
+            <div class="plex-topbar-right topbar-actions topbar-utilities">
+                <a href="#" class="nav-button nav-button-icon nav-button-search" title="Search" aria-label="Search" onclick="togglePopup('searchbox');document.forms.searchform.searchstring.focus();return false;"></a>
+                <a href="{{rootPath}}/?logout=true" class="nav-button">Logout</a>
+            </div>
+        </header>
+
+        <div class="frame-body">
+            <aside class="home-sidebar" data-sidebar-dynamic>
+                <nav class="sidebar-nav">
+                    <a href="{{rootPath}}/" class="sidebar-link">
+                        <span class="sidebar-link-icon">&#8962;</span>
+                        <span class="sidebar-link-text">Home</span>
+                    </a>
+                </nav>
+            </aside>
+
+            <main class="frame-content shell">
+                <section class="rail">
+                    <div id="group" class="poster-grid">
+                        {{#items}}
+                        <article class="cellcontainer">
+                            {{#isFolder}}
+                            <div class="cell folder-cell">
+                                <a class="thumb" href="{{itemFolderUrl}}">
+                                    <img src="{{itemCoverUrl}}" alt="{{itemTitle}}">
+                                    <span class="tile-chip">{{itemChildrenCount}}</span>
+                                </a>
+                                <div class="label">{{itemTitle}}</div>
+                            </div>
+                            {{/isFolder}}
+                            {{^isFolder}}
+                            <div class="cell poster-cell">
+                                <a class="thumb" href="#" onclick="togglePopup('bookdetails');loadBookDetails({{itemId}},'{{rootPath}}');return false;">
+                                    <img src="{{itemCoverUrl}}" alt="{{itemTitle}}">
+                                    <div class="reading-mask {{readingStatusClass}}">
+                                        <span class="cover_progress_bar_fill" style="--value: {{progress}}%;"></span>
+                                    </div>
+                                </a>
+                                <div class="label">{{itemTitle}}</div>
+                            </div>
+                            {{/isFolder}}
+                        </article>
+                        {{/items}}
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    {{>library/inc-library-popups.html}}
+    {{>common/inc-footer.html}}

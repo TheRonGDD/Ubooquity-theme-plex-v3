@@ -1,0 +1,14 @@
+# Local development notes — not part of the public theme
+CHANGES.md
+
+# OS noise
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor noise
+*.bak
+*.swp
+*~
+.vscode/
+.idea/

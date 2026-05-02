@@ -11,6 +11,11 @@ function plexV3ToggleSidebar() {
 }
 
 var plexV3ContinueRefreshPending = false;
+var plexV3LastHomeRefreshAt = 0;
+var plexV3MinHomeRefreshIntervalMs = 30000;
+var plexV3LibraryGridRefreshing = false;
+var plexV3LastLibraryGridRefreshAt = 0;
+var plexV3MinLibraryGridRefreshIntervalMs = 5000;
 
 function plexV3NormalizeCard(card) {
     var clone = card.cloneNode(true);
@@ -101,29 +106,58 @@ function plexV3SaveTrackedContinueReading(items) {
     }
 }
 
-function plexV3BuildTrackedCardHtml(item) {
+function plexV3OpenTrackedItem(thumb) {
+    if (!thumb) {
+        return;
+    }
+    var itemId = thumb.getAttribute('data-item-id');
     var rootPath = document.body.getAttribute('data-root-path') || '';
+    if (typeof togglePopup === 'function') {
+        togglePopup('bookdetails');
+    }
+    if (typeof loadBookDetails === 'function') {
+        loadBookDetails(itemId, rootPath);
+    }
+}
+
+function plexV3BuildTrackedCardHtml(item) {
+    var itemIdStr = String(item.itemId || '').replace(/[^0-9]/g, '');
+
     var article = document.createElement('article');
     article.className = 'cellcontainer home-row-card';
-    article.innerHTML =
-        '<div class="cell poster-cell">' +
-            '<a class="thumb" href="#" onclick="togglePopup(\'bookdetails\');loadBookDetails(' + item.itemId + ',\'' + rootPath + '\');return false;">' +
-                '<img src="' + item.coverUrl + '" alt="">' +
-                '<div class="reading-mask in_progress">' +
-                    '<span class="cover_progress_bar_fill" style="--value: 50%;"></span>' +
-                '</div>' +
-            '</a>' +
-            '<div class="label"></div>' +
-        '</div>';
 
-    var image = article.querySelector('img');
-    var label = article.querySelector('.label');
-    if (image) {
-        image.alt = item.title || '';
+    var cell = document.createElement('div');
+    cell.className = 'cell poster-cell';
+
+    var thumb = document.createElement('a');
+    thumb.className = 'thumb';
+    thumb.href = '#';
+    thumb.setAttribute('data-item-id', itemIdStr);
+    thumb.setAttribute('onclick', 'plexV3OpenTrackedItem(this);return false;');
+
+    var image = document.createElement('img');
+    if (item.coverUrl) {
+        image.src = item.coverUrl;
     }
-    if (label) {
-        label.textContent = item.title || '';
-    }
+    image.alt = item.title || '';
+    thumb.appendChild(image);
+
+    var mask = document.createElement('div');
+    mask.className = 'reading-mask plex-v3-loading status_inprogress';
+    var fill = document.createElement('span');
+    fill.className = 'cover_progress_bar_fill';
+    fill.style.setProperty('--value', '0%');
+    mask.appendChild(fill);
+    thumb.appendChild(mask);
+
+    cell.appendChild(thumb);
+
+    var label = document.createElement('div');
+    label.className = 'label';
+    label.textContent = item.title || '';
+    cell.appendChild(label);
+
+    article.appendChild(cell);
 
     return article.outerHTML;
 }
@@ -251,24 +285,106 @@ function plexV3CollectContinueReadingFromPage(doc, pageUrl, itemsById, queue, vi
     }
 }
 
+function plexV3FetchDetailsProgress(itemId) {
+    var rootPath = document.body.getAttribute('data-root-path') || '';
+    return fetch(rootPath + '/bookdetails/' + encodeURIComponent(itemId), {
+        credentials: 'same-origin',
+        cache: 'no-store'
+    }).then(function (response) {
+        if (!response.ok) {
+            return null;
+        }
+        return response.text();
+    }).then(function (html) {
+        if (!html) {
+            return null;
+        }
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var wrapper = doc.querySelector('#details_progress_wrapper');
+        if (!wrapper) {
+            return null;
+        }
+        var fill = wrapper.querySelector('.details_progress_bar_fill');
+        var rawValue = fill ? (fill.style.getPropertyValue('--value') || '').trim() : '';
+        return {
+            value: rawValue,
+            statusClass: (wrapper.className || '').trim()
+        };
+    }).catch(function () {
+        return null;
+    });
+}
+
+// `/user-api/bookmark?docId=...` is the only Ubooquity endpoint confirmed to be
+// per-user-scoped (its handler reads User.getName() and falls back to public_usr).
+// `/bookdetails/{id}` reads progress from OpusEntry.getBookmark(), whose join is
+// not username-scoped, so it can leak another user's progress. Use this as the
+// Continue Reading membership filter.
 function plexV3FetchBookmarkForCurrentUser(itemId) {
     var rootPath = document.body.getAttribute('data-root-path') || '';
     return fetch(rootPath + '/user-api/bookmark?docId=' + encodeURIComponent(itemId), {
         credentials: 'same-origin',
         cache: 'no-store'
     }).then(function (response) {
-        if (response.status === 204) {
+        if (response.status === 204 || !response.ok) {
             return '';
         }
-
-        if (!response.ok) {
-            return '';
-        }
-
         return response.text();
+    }).then(function (text) {
+        return (text || '').trim();
     }).catch(function () {
         return '';
     });
+}
+
+function plexV3UserHasBookmark(bookmark) {
+    var trimmed = (bookmark || '').trim();
+    if (!trimmed) {
+        return false;
+    }
+    if (trimmed === '0' || trimmed === '0#0') {
+        return false;
+    }
+    return true;
+}
+
+// `/user-api/bookmark` returns a position string only, with no status field — a
+// book "marked finished" still has a bookmark at the end-of-content position, so
+// the bookmark gate alone can't drop finished items. Use `/bookdetails/{id}`'s
+// statusClass as a secondary filter. This statusClass is from the unscoped
+// OpusEntry.getBookmark() join so it can occasionally reflect another user's
+// status; in the worst case a current-user in-progress item gets hidden because
+// another user finished it, which is rarer than the inverse and acceptable.
+function plexV3PassesContinueReadingFilter(result) {
+    if (!result.hasBookmark) {
+        return false;
+    }
+    var statusClass = result.detailsProgress ? result.detailsProgress.statusClass : '';
+    if (statusClass.indexOf('finished') !== -1) {
+        return false;
+    }
+    return true;
+}
+
+function plexV3ApplyProgressToCardHtml(html, value, statusClass) {
+    var wrapper = document.createElement('div');
+    wrapper.innerHTML = html;
+    var card = wrapper.firstElementChild;
+    if (!card) {
+        return html;
+    }
+
+    var mask = card.querySelector('.reading-mask');
+    if (mask) {
+        mask.className = ('reading-mask ' + (statusClass || '')).trim();
+    }
+
+    var fill = card.querySelector('.cover_progress_bar_fill');
+    if (fill && value) {
+        fill.style.setProperty('--value', value);
+    }
+
+    return card.outerHTML;
 }
 
 function plexV3BuildContinueReading(seedUrls) {
@@ -300,7 +416,8 @@ function plexV3BuildContinueReading(seedUrls) {
 
             itemsById[itemId] = {
                 itemId: itemId,
-                progress: 999,
+                progress: 0,
+                pinned: true,
                 html: plexV3BuildTrackedCardHtml(trackedItems[itemId])
             };
         });
@@ -310,6 +427,9 @@ function plexV3BuildContinueReading(seedUrls) {
                 return itemsById[itemId];
             })
             .sort(function (a, b) {
+                if (a.pinned !== b.pinned) {
+                    return a.pinned ? -1 : 1;
+                }
                 return b.progress - a.progress;
             });
 
@@ -323,25 +443,33 @@ function plexV3BuildContinueReading(seedUrls) {
         Promise.all(
             candidates.slice(0, 36).map(function (item) {
                 return plexV3FetchBookmarkForCurrentUser(item.itemId).then(function (bookmark) {
-                    return {
-                        item: item,
-                        bookmark: (bookmark || '').trim()
-                    };
+                    var hasBookmark = plexV3UserHasBookmark(bookmark);
+                    if (!hasBookmark) {
+                        return { item: item, hasBookmark: false, detailsProgress: null };
+                    }
+                    return plexV3FetchDetailsProgress(item.itemId).then(function (detailsProgress) {
+                        return { item: item, hasBookmark: true, detailsProgress: detailsProgress };
+                    });
                 });
             })
         ).then(function (results) {
             var cards = results
-                .filter(function (result) {
-                    return result.bookmark && result.bookmark !== '0' && result.bookmark !== '0#0';
-                })
+                .filter(plexV3PassesContinueReadingFilter)
                 .map(function (result) {
+                    if (result.detailsProgress) {
+                        return plexV3ApplyProgressToCardHtml(
+                            result.item.html,
+                            result.detailsProgress.value,
+                            result.detailsProgress.statusClass
+                        );
+                    }
                     return result.item.html;
                 })
                 .slice(0, 18);
 
             Object.keys(trackedItems).forEach(function (itemId) {
                 if (!results.some(function (result) {
-                    return result.item.itemId === itemId && result.bookmark && result.bookmark !== '0' && result.bookmark !== '0#0';
+                    return result.item.itemId === itemId && plexV3PassesContinueReadingFilter(result);
                 })) {
                     delete trackedItems[itemId];
                 }
@@ -375,7 +503,7 @@ function plexV3BuildContinueReading(seedUrls) {
         visited[url] = true;
         pagesVisited += 1;
 
-        fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+        fetch(url, { credentials: 'same-origin' })
             .then(function (response) {
                 return response.text();
             })
@@ -402,16 +530,22 @@ function plexV3RefreshHomeRows() {
         return;
     }
 
+    var sinceLast = Date.now() - plexV3LastHomeRefreshAt;
+    if (sinceLast < plexV3MinHomeRefreshIntervalMs) {
+        return;
+    }
+
     plexV3ContinueRefreshPending = true;
     window.setTimeout(function () {
         plexV3ContinueRefreshPending = false;
+        plexV3LastHomeRefreshAt = Date.now();
         plexV3BuildHomeRows();
-    }, 50);
+    }, 250);
 }
 
 function plexV3LoadLatestRow(row) {
     var url = row.getAttribute('data-source-url');
-    return fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+    return fetch(url, { credentials: 'same-origin' })
             .then(function (response) {
                 return response.text();
             })
@@ -446,6 +580,8 @@ function plexV3BuildHomeRows() {
         return;
     }
 
+    plexV3LastHomeRefreshAt = Date.now();
+
     var continueStrip = document.querySelector('[data-dynamic-row="continue-reading"] .row-strip');
     if (continueStrip && !continueStrip.textContent.trim()) {
         continueStrip.classList.add('row-strip-loading');
@@ -472,13 +608,85 @@ function plexV3BuildHomeRows() {
     });
 }
 
+function plexV3ApplyDetailsProgressToCard(card, detailsProgress) {
+    if (!card || !detailsProgress) {
+        return;
+    }
+    var mask = card.querySelector('.reading-mask');
+    if (mask) {
+        mask.className = ('reading-mask ' + (detailsProgress.statusClass || '')).trim();
+    }
+    var fill = card.querySelector('.cover_progress_bar_fill');
+    if (fill && detailsProgress.value) {
+        fill.style.setProperty('--value', detailsProgress.value);
+    }
+}
+
+function plexV3RefreshLibraryGridProgress() {
+    if (!document.body.classList.contains('page-library')) {
+        return;
+    }
+    if (plexV3LibraryGridRefreshing) {
+        return;
+    }
+
+    var sinceLast = Date.now() - plexV3LastLibraryGridRefreshAt;
+    if (plexV3LastLibraryGridRefreshAt && sinceLast < plexV3MinLibraryGridRefreshIntervalMs) {
+        return;
+    }
+
+    var cards = Array.prototype.slice.call(document.querySelectorAll('.poster-grid .cellcontainer'));
+    var queue = [];
+    cards.forEach(function (card) {
+        var itemId = plexV3ExtractItemId(card);
+        if (itemId) {
+            queue.push({ card: card, itemId: itemId });
+        }
+    });
+
+    if (!queue.length) {
+        return;
+    }
+
+    plexV3LibraryGridRefreshing = true;
+    plexV3LastLibraryGridRefreshAt = Date.now();
+
+    var index = 0;
+    var concurrency = Math.min(6, queue.length);
+    var inFlight = concurrency;
+
+    function next() {
+        if (index >= queue.length) {
+            inFlight -= 1;
+            if (inFlight <= 0) {
+                plexV3LibraryGridRefreshing = false;
+            }
+            return;
+        }
+        var entry = queue[index++];
+        plexV3FetchDetailsProgress(entry.itemId)
+            .then(function (detailsProgress) {
+                plexV3ApplyDetailsProgressToCard(entry.card, detailsProgress);
+            })
+            .catch(function () {
+            })
+            .then(next);
+    }
+
+    for (var i = 0; i < concurrency; i++) {
+        next();
+    }
+}
+
 function plexV3OnPageShow() {
     plexV3RefreshHomeRows();
+    plexV3RefreshLibraryGridProgress();
 }
 
 function plexV3OnVisibilityChange() {
     if (!document.hidden) {
         plexV3RefreshHomeRows();
+        plexV3RefreshLibraryGridProgress();
     }
 }
 
@@ -592,6 +800,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (document.body.classList.contains('page-home')) {
         plexV3BuildHomeRows();
+        window.addEventListener('pageshow', plexV3OnPageShow);
+        document.addEventListener('visibilitychange', plexV3OnVisibilityChange);
+    }
+
+    if (document.body.classList.contains('page-library')) {
+        plexV3RefreshLibraryGridProgress();
         window.addEventListener('pageshow', plexV3OnPageShow);
         document.addEventListener('visibilitychange', plexV3OnVisibilityChange);
     }

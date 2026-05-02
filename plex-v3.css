@@ -524,6 +524,20 @@ body.sidebar-collapsed .sidebar-link-text {
     background: linear-gradient(90deg, #7bc9f3, #2b86c2);
 }
 
+.reading-mask.status_unread,
+#details_progress_wrapper.status_unread {
+    visibility: hidden;
+}
+
+.reading-mask.status_finished .cover_progress_bar_fill,
+#details_progress_wrapper.status_finished .details_progress_bar_fill {
+    background: linear-gradient(90deg, #4ade80, #16a34a);
+}
+
+.reading-mask.plex-v3-loading .cover_progress_bar_fill {
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.35));
+}
+
 .root-list {
     display: grid;
     gap: 12px;
